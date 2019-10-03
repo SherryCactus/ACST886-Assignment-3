@@ -1,0 +1,234 @@
+---
+title: "Assignment 3"
+output: html_document
+---
+
+#Question 1
+
+####Death Rate
+```{r}
+qx_d <- c()
+qx_d[55:57] <- c(0.001046, 0.001199, 0.001375)
+px_d <- 1-qx_d
+```
+
+Different interest rates 
+```{r}
+i <- 0.06
+c <- 0.0192308
+IER <- 0.08
+RDR <- 0.12
+```
+
+####Expected Annuity Payments on Valuation Basis at EOY
+```{r}
+R.EOY <- rep(0,3)
+for(t in 1:3){
+  R.EOY[t] <- 15000*(1+c)^(t-1) * prod(px_d[55:(55+t-1)])
+}
+R.EOY
+```
+
+####Expected Expenses at EOY
+```{r}
+E.EOY <- rep(0,3)
+E0 <- 100 + 40250*0.015
+f <- 0.05
+for(t in 1:3){
+  E.EOY[t] <- 10*(1+f)^(t-1) * prod(px_d[55:(55+t-1)])
+}
+E.EOY
+```
+
+####Expected Policy Value, Interest and Transfer at IER at EOY
+The policy value in this case at the end of year t is $$_tV=Ra_{{55+t}:{\overline{n-t}|}}$$
+```{r}
+V.BOY <- rep(0,3)
+V.EOY <- rep(0,3)
+I.EOY <- rep(0,3)
+T.EOY <- rep(0,3)
+
+V.EOY[1] <- (15000*(1+c)/(1+i) *px_d[56] + 15000*(1+c)^2/(1+i)^2 *px_d[56]*px_d[57])*px_d[55]
+V.EOY[2] <- (15000*(1+c)^2/(1+i) *px_d[57])*px_d[55]*px_d[56]
+
+V.BOY[1] <- (15000/(1+i) *prod(px_d[55:55]) + 15000*(1+c)/(1+i)^2 *prod(px_d[55:56]) + 15000*(1+c)^2/(1+i)^3 *prod(px_d[55:57])) - 40250
+I.EOY[1] <- (40250-E0)*IER
+T.EOY[1] <- 40250 - E0 - R.EOY[1] - E.EOY[1] + I.EOY[1] - V.EOY[1]
+for(t in 2:3){
+  V.BOY[t] <- V.EOY[t-1]
+  I.EOY[t] <- V.BOY[t]*IER
+  T.EOY[t] <- V.BOY[t] + I.EOY[t] - E.EOY[t] - R.EOY[t] - V.EOY[t]
+}
+I.EOY
+V.EOY
+```
+
+##(a)
+
+###(i)
+The profit signature is hence the vector of Transfers at EOY
+```{r}
+T.EOY
+```
+
+###(ii)
+The expected NPV of profits is just the EPV of profit signature
+```{r}
+EPV.T_IER <- sum(T.EOY/(1+IER)^(1:3))
+EPV.T_IER
+```
+
+Under the risk discount rate, the EPV of profits is
+```{r}
+EPV.T_RDR <- sum(T.EOY/(1+RDR)^(1:3))
+EPV.T_RDR
+```
+
+Hence the profit margin is
+```{r}
+EPV.T_RDR/40250
+```
+
+##(b)
+The IRR can be calculated by finding the root of $NPV(Transfers)=0$
+```{r}
+NPV <- function(yield){
+  sum(T.EOY/(1+yield)^(1:3))
+}
+IRR <- uniroot(NPV, interval = c(0,1))
+IRR
+```
+
+Hence, the IRR is 50.29%. The reason of a high IRR in this case is that the EPV of the 3-year repayments is greater than its purchase price 40250.
+```{r}
+sum(R.EOY/(1+i)^(1:3))
+```
+
+#Question 2
+####Multiple Decrement Table
+```{r}
+x <- c(30:40)
+qx_d <- c(0.00043, 0.00042, 0.00041, 0.00040, 0.00041, 0.00042, 0.00043, 0.00045, 0.00049, 0.00053)
+qx_w <- c(0.25, 0.2, 0.175, rep(0.15,6), 1)
+
+aqx_d <- qx_d * (1-0.5*qx_w)
+aqx_w <- qx_w * (1-0.5*qx_d)
+
+al <- rep(0,11)
+ad_d <- rep(0,11)
+ad_w <- rep(0,11)
+al[1] <- 100000
+ad_d[1] <- al[1]*aqx_d[1]
+ad_w[1] <- al[1]*aqx_w[1]
+for(t in 2:11){
+  al[t] <- al[t-1]-ad_d[t-1]-ad_w[t-1]
+  ad_d[t] <- al[t]*aqx_d[t]
+  ad_w[t] <- al[t]*aqx_w[t]
+}
+```
+
+####Unit Fund
+For an in-force policy
+```{r}
+P.BOY <- c()
+P.BOY[1] <- 5000*(1-0.45)*(1-0.005)
+P.BOY[2:10] <- 5000*(1-0.01)*(1-0.005)
+
+VoU.EOY <- c()
+VoU.EOY[1] <- P.BOY[1]*(1+0.1)*(1-0.003)
+for (t in 2:10){
+  VoU.EOY[t] <- (VoU.EOY[t-1]+P.BOY[t])*(1+0.1)*(1-0.003)
+}
+```
+
+Expected amounts per initial policy
+```{r}
+EP.BOY <- c()
+EVoU.EOY <- c()
+for(t in 1:10){
+  EP.BOY[t] <- P.BOY[t] * al[t]/al[1]
+  EVoU.EOY[t] <- VoU.EOY[t] * al[t+1]/al[1]
+}
+
+EI_u.EOY <- c()
+EI_u.EOY[1] <- EP.BOY[1]*0.1
+for(t in 2:10){
+  EI_u.EOY[t] <- (EVoU.EOY[t-1]+EP.BOY[t])*0.1
+}
+```
+
+Transfers to non-unit fund
+```{r}
+T_u.EOY <- c()
+for(t in 2:10){
+  T_u.EOY[1] <- EP.BOY[1]+EI_u.EOY[1]-EVoU.EOY[1]
+  T_u.EOY[t] <- EVoU.EOY[t-1]+EP.BOY[t]+EI_u.EOY[t]-EVoU.EOY[t]
+}
+```
+
+####Non-Unit Fund
+For an in-force policy
+```{r}
+PBF.BOY <- 5000*c(0.45, rep(0.01,9))
+
+BSM.BOY <- 0.005*5000*(1-c(0.45, rep(0.01,9)))
+
+E.BOY <- c(5000*0.45, rep(0,9)) + 58*(1+0.2)^(0:9)
+
+DSB.EOY <- VoU.EOY
+```
+
+Expected amounts per initial policy
+```{r}
+EPBF.BOY <- c()
+EBSM.BOY <- c()
+EE.BOY <- c()
+EDB.EOY <- c()
+ESB.EOY <- c()
+for(t in 1:10){
+  EPBF.BOY[t] <- PBF.BOY[t] * al[t]/al[1]
+  EBSM.BOY[t] <- BSM.BOY[t] * al[t]/al[1]
+  EE.BOY[t] <- E.BOY[t] * al[t]/al[1]
+  EDB.EOY[t] <- DSB.EOY[t] * ad_d[t]/al[1]
+  ESB.EOY[t] <- DSB.EOY[t] * ad_w[t]/al[1]
+}
+
+EI_nu.EOY <- (EPBF.BOY+EBSM.BOY-EE.BOY)*0.08
+
+T_nu.EOY <- EPBF.BOY+EBSM.BOY-EE.BOY+EI_nu.EOY+T_u.EOY-EDB.EOY-ESB.EOY
+```
+
+##(a)
+The profit signature is
+```{r}
+T_nu.EOY
+```
+
+The EPV of transfers is 
+```{r}
+sum(T_nu.EOY/(1+0.125)^(1:10))
+```
+
+##(b)
+We want the transfer from the Unit Fund in year 10 to be higher by 0.7596495.
+```{r}
+incr <- T_nu.EOY[10]/(1+0.1)
+incr
+```
+
+So in the Unit Fund we want the policy value at time 9 per inforce policy to increase by
+```{r}
+incr_u <- incr*al[1]/al[10]
+incr_u
+```
+
+The new profit signature will be
+```{r}
+T_nu.EOY_incr <- T_nu.EOY + c(rep(0,8), incr, -T_nu.EOY[10])
+T_nu.EOY_incr
+```
+
+##(c)
+Decreased.
+
+#Question 3
