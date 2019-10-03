@@ -1,6 +1,8 @@
 ---
 title: "Assignment 3"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 #Question 1
@@ -229,6 +231,17 @@ T_nu.EOY_incr
 ```
 
 ##(c)
+```{r}
+sum(T_nu.EOY_incr/(1.125)^(1:10))
+```
 Decreased.
 
 #Question 3
+###IRR of Q2(a)
+```{r}
+NPV_nu <- function(yield){
+  sum(T_nu.EOY/(1+yield)^(1:10))
+}
+IRR_nu <- uniroot(NPV_nu, interval = c(0,1))
+IRR_nu
+```
